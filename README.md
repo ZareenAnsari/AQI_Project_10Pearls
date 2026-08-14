@@ -195,8 +195,8 @@ Example `/predict` payload:
 ## Screenshots
 
 ```markdown
-![Forecast tab](screenshots/forecast.png)
-![What-If simulator](screenshots/whatif.png)
+![Forecast tab](screenshots/docs/forecast.png)
+![What-If simulator](screenshots/docs/whatif.png)
 ```
 
 ## Limitations
