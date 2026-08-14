@@ -5,9 +5,9 @@ A machine learning app that predicts and forecasts Air Quality Index (AQI) for K
 I built this to get hands-on with a full ML pipeline — not just training a model in a notebook, but actually wiring up a feature store, versioning the model, exposing it through an API, and putting a real UI on top of it.
 
 ##  What it does
-3-Day Forecast tab — pulls the latest environmental data automatically and shows a 3-day AQI forecast with daily cards, a trend chart, and a health advisory.
-What-If Simulator tab — lets you manually punch in pollutant levels, weather conditions, and time features to see what the model predicts for a custom scenario.
-Health alerts that change based on the predicted AQI band (Good → Hazardous), using the standard AQI category thresholds.
+- 3-Day Forecast tab — pulls the latest environmental data automatically and shows a 3-day AQI forecast with daily cards, a trend chart, and a health advisory.
+- What-If Simulator tab — lets you manually punch in pollutant levels, weather conditions, and time features to see what the model predicts for a custom scenario.
+- Health alerts that change based on the predicted AQI band (Good → Hazardous), using the standard AQI category thresholds.
 
 ---
 
