@@ -194,10 +194,13 @@ Example `/predict` payload:
 
 ## Screenshots
 
-```markdown
-![Forecast tab](screenshots/docs/forecast.png)
-![What-If simulator](screenshots/docs/whatif.png)
-```
+### Forecast
+
+<img src="screenshots/docs/forecast.png" alt="Forecast tab">
+
+### What-If Simulator
+
+<img src="screenshots/docs/whatif.png" alt="What-If simulator">
 
 ## Limitations
 
