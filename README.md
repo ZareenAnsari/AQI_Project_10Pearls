@@ -146,9 +146,7 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
 3. In a separate terminal, start the frontend:
    ```bash
    streamlit run streamlit_app.py
-   ```
 
-4. Open the URL Streamlit prints (usually `http://localhost:8501`).
 
 ## API Reference
 
@@ -198,13 +196,13 @@ Example `/predict` payload:
 ## Screenshots
 
 ```markdown
-![Forecast tab](docs/screenshots/forecast.png)
-![What-If simulator](docs/screenshots/whatif.png)
+![Forecast tab](screenshots/forecast.png)
+![What-If simulator](screenshots/whatif.png)
 ```
 
 ## Limitations
 
-- The forecast depends on how fresh the feature store data is — if the upstream data source lags, forecasts can be stale.
+- The forecast depends on how fresh the feature store data is if the upstream data source lags, forecasts can be stale.
 - Currently trained/tuned for Karachi specifically; feature ranges (e.g. dust, aerosol optical depth).
 - No authentication on the FastAPI endpoints fine for a local/demo setup, not production-ready as-is.
 
