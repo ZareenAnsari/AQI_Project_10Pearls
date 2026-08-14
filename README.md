@@ -147,6 +147,12 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
    ```bash
    streamlit run streamlit_app.py
 
+<<<<<<< HEAD
+=======
+4. Open the URL Streamlit prints (usually `http://localhost:8501`).
+
+If the sidebar shows " API Offline," it usually means Uvicorn isn't running yet, or it's running on a different port than `API_URL` in `streamlit_app.py` expects.
+>>>>>>> 053272b (screenshots)
 
 ## API Reference
 
