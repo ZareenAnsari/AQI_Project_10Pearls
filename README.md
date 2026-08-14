@@ -102,17 +102,18 @@ Data flows one direction at inference time: the Streamlit app never talks to Hop
 
 ## Model & Methodology
 
-Random Forest regression was chosen because it handles non-linear relationships between pollutants and AQI reasonably well, needs relatively little feature scaling, and is robust to the kind of noisy readings you get from environmental sensors. [ 
-Model	RMSE	MAE	R2
-0	Ridge Regression	28.191212	22.444981	0.102921
-1	Random Forest	24.177871	17.299552	0.340159
-2	XGBoost	25.051502	17.476195	0.291613
-3	LSTM	30.310470	23.807315	-0.000182
-.] Random Forest was best among these models.
+Random Forest regression was chosen because it handles non-linear relationships between pollutants and AQI reasonably well, needs relatively little feature scaling, and is robust to the kind of noisy readings you get from environmental sensors.
+
+| Model | RMSE | MAE | R² |
+|---|---:|---:|---:|
+| Ridge Regression | 28.1912 | 22.4450 | 0.1029 |
+| Random Forest | 24.1779 | 17.2996 | 0.3402 |
+| XGBoost | 25.0515 | 17.4762 | 0.2916 |
+| LSTM | 30.3105 | 23.8073 | -0.0002 | Random Forest was best among these models.
 
 **Training pipeline:** Features are engineered and written to the Hopsworks Feature Store. The Random Forest model is trained on this feature set and, once evaluated, registered to the Hopsworks Model Registry along with its version number, so the serving layer always pulls a known, reproducible model rather than whatever's sitting in a local file.
 
-**Hyperparameters:** [max_depth=20, n_estimators=300, random_state=42, gridsearchcv=5.]
+**Hyperparameters:** max_depth=20, n_estimators=300, random_state=42, gridsearchcv=5.
 
 ## Project Structure
 
@@ -132,7 +133,7 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
 
 1. Clone the repo and install dependencies:
    ```bash
-   git clone https://github.com/[FILL IN]/karachi-aqi.git
+   git clone https://github.com/ZareenAnsari/AQI_Project_10Pearls
    cd karachi-aqi
    pip install -r requirements.txt
    ```
@@ -153,8 +154,6 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
    ```
 
 5. Open the URL Streamlit prints (usually `http://localhost:8501`).
-
-If the sidebar shows " API Offline," it usually means Uvicorn isn't running yet, or it's running on a different port than `API_URL` in `streamlit_app.py` expects.
 
 ## API Reference
 
