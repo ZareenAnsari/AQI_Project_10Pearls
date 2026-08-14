@@ -63,7 +63,7 @@ Goals for this project:
 | Feature Store & Model Registry | Hopsworks |
 | Backend API | FastAPI |
 | Frontend | Streamlit |
-| Data source | [ Zenodo.org, Aqicn.org] |
+| Data source |  Zenodo.org, Aqicn.org |
 
 ## System Architecture
 
