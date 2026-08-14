@@ -1,8 +1,13 @@
-#  AQI Prediction System
+##  Karachi AQI Prediction System
 
-An end-to-end **Air Quality Index (AQI) Prediction System** that uses machine learning, automated feature engineering, model training, explainable AI, and an interactive Streamlit dashboard to predict AQI and provide health-risk alerts.
+A machine learning app that predicts and forecasts Air Quality Index (AQI) for Karachi. It's built around a Random Forest model, with Hopsworks handling the feature store and model registry, FastAPI serving predictions, and Streamlit as the frontend.
 
-The project is designed as an automated ML/MLOps pipeline using **GitHub Actions** for feature processing and model training.
+I built this to get hands-on with a full ML pipeline — not just training a model in a notebook, but actually wiring up a feature store, versioning the model, exposing it through an API, and putting a real UI on top of it.
+
+##  What it does
+3-Day Forecast tab — pulls the latest environmental data automatically and shows a 3-day AQI forecast with daily cards, a trend chart, and a health advisory.
+What-If Simulator tab — lets you manually punch in pollutant levels, weather conditions, and time features to see what the model predicts for a custom scenario.
+Health alerts that change based on the predicted AQI band (Good → Hazardous), using the standard AQI category thresholds.
 
 ---
 
@@ -22,6 +27,12 @@ Air pollution is a major environmental and public-health concern. The purpose of
 - Automate feature engineering and model training using GitHub Actions
 
 ---
+
+##  Known limitations
+
+The forecast depends on how fresh the feature store data is — if the upstream data source lags, forecasts can be stale.
+Currently only trained/tuned for Karachi; feature ranges (e.g. dust, aerosol optical depth) wouldn't generalize well to a very different climate without retraining.
+No authentication on the FastAPI endpoints — fine for a local/demo setup, not production-ready as-is.
 
 ##  Objectives
 
