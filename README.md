@@ -138,20 +138,17 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
    pip install -r requirements.txt
    ```
 
-2. Add your Hopsworks API key to a `.env` file (make sure this file is in `.gitignore` and never committed):
-   ```
-
-3. Start the backend:
+2. Start the backend:
    ```bash
    uvicorn app:app --host 0.0.0.0 --port 8000
    ```
 
-4. In a separate terminal, start the frontend:
+3. In a separate terminal, start the frontend:
    ```bash
    streamlit run streamlit_app.py
    ```
 
-5. Open the URL Streamlit prints (usually `http://localhost:8501`).
+4. Open the URL Streamlit prints (usually `http://localhost:8501`).
 
 ## API Reference
 
@@ -200,8 +197,6 @@ Example `/predict` payload:
 
 ## Screenshots
 
-[Add screenshots of the Forecast tab and What-If tab here. On GitHub you can drag-and-drop images directly into the README editor, or reference them like:]
-
 ```markdown
 ![Forecast tab](docs/screenshots/forecast.png)
 ![What-If simulator](docs/screenshots/whatif.png)
@@ -223,7 +218,7 @@ Example `/predict` payload:
 
 ## Author
 
-Zareen Ansari — [zareenansari918@gmail.com / (https://www.linkedin.com/in/zareenansari/)]
+Zareen Ansari — zareenansari918@gmail.com / (https://www.linkedin.com/in/zareenansari/)
 
 ##  Complete System Architecture
 
