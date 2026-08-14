@@ -11,10 +11,7 @@ from pydantic import BaseModel
 
 import hopsworks
 
-
-# ============================================================
 # 1. LOAD ENVIRONMENT VARIABLES
-# ============================================================
 
 load_dotenv()
 
@@ -32,10 +29,7 @@ if not HOPSWORKS_PROJECT:
 CITY_LAT = float(os.getenv("CITY_LAT", "24.8607"))
 CITY_LON = float(os.getenv("CITY_LON", "67.0011"))
 
-
-# ============================================================
 # 2. FASTAPI APPLICATION
-# ============================================================
 
 app = FastAPI(
     title="Karachi AQI Prediction API",
@@ -43,10 +37,7 @@ app = FastAPI(
     version="1.1.0"
 )
 
-
-# ============================================================
 # 3. AQI INPUT MODEL
-# ============================================================
 
 class AQIInput(BaseModel):
 
@@ -78,12 +69,7 @@ class AQIInput(BaseModel):
     wind_speed: float
     rain: float
 
-
-# ============================================================
 # 4. FEATURE ORDER
-# IMPORTANT:
-# This MUST exactly match the training pipeline.
-# ============================================================
 
 FEATURE_ORDER = [
     "pm10",
@@ -110,10 +96,7 @@ FEATURE_ORDER = [
     "rain"
 ]
 
-
-# ============================================================
 # 5. GLOBAL STATE
-# ============================================================
 
 model = None
 
@@ -123,10 +106,7 @@ MODEL_VERSION = 1
 hopsworks_project = None
 feature_store = None
 
-
-# ============================================================
 # 6. LOAD MODEL FROM HOPSWORKS
-# ============================================================
 
 def load_model_from_hopsworks():
 
@@ -220,10 +200,6 @@ def load_model_from_hopsworks():
     return model
 
 
-# ============================================================
-# LOAD MODEL
-# ============================================================
-
 try:
 
     load_model_from_hopsworks()
@@ -237,10 +213,6 @@ except Exception as e:
 
     model = None
 
-
-# ============================================================
-# 7. GET RECENT AQI HISTORY
-# ============================================================
 
 def get_recent_aqi_history(
     n_days: int = 8
@@ -291,18 +263,13 @@ def get_recent_aqi_history(
         n_days
     ).reset_index(drop=True)
 
-
-# ============================================================
-# 8. GET OPEN-METEO FORECAST
-# ============================================================
+#  GET OPEN-METEO FORECAST
 
 def get_forecast_inputs(
     days: int = 3
 ) -> pd.DataFrame:
 
-    # --------------------------------------------------------
     # AIR QUALITY FORECAST
-    # --------------------------------------------------------
 
     air_quality_url = (
         "https://air-quality-api.open-meteo.com/v1/air-quality?"
@@ -395,10 +362,7 @@ def get_forecast_inputs(
         .reset_index(drop=True)
     )
 
-
-    # --------------------------------------------------------
     # WEATHER FORECAST
-    # --------------------------------------------------------
 
     weather_url = (
         "https://api.open-meteo.com/v1/forecast?"
@@ -449,10 +413,7 @@ def get_forecast_inputs(
             daily["precipitation_sum"]
     })
 
-
-    # --------------------------------------------------------
     # MERGE AIR + WEATHER
-    # --------------------------------------------------------
 
     forecast_df = pd.merge(
         air_daily_df,
@@ -484,10 +445,7 @@ def get_forecast_inputs(
 
     return forecast_df
 
-
-# ============================================================
 # 9. RUN MODEL PREDICTION
-# ============================================================
 
 def predict_row(
     feature_dict: dict
@@ -545,10 +503,7 @@ def predict_row(
         prediction[0]
     )
 
-
-# ============================================================
-# 10. HOME
-# ============================================================
+#  HOME
 
 @app.get("/")
 def home():
@@ -568,10 +523,7 @@ def home():
             model is not None
     }
 
-
-# ============================================================
-# 11. HEALTH CHECK
-# ============================================================
+#  HEALTH CHECK
 
 @app.get("/health")
 def health():
@@ -596,10 +548,7 @@ def health():
             MODEL_VERSION
     }
 
-
-# ============================================================
-# 12. MANUAL PREDICTION
-# ============================================================
+#  MANUAL PREDICTION
 
 @app.post("/predict")
 def predict_aqi(
@@ -653,10 +602,7 @@ def predict_aqi(
             detail=str(e)
         )
 
-
-# ============================================================
-# 13. AUTOMATIC FORECAST
-# ============================================================
+# AUTOMATIC FORECAST
 
 @app.get("/forecast")
 def forecast_aqi(
@@ -679,9 +625,7 @@ def forecast_aqi(
 
     try:
 
-        # ----------------------------------------------------
         # GET REAL AQI HISTORY
-        # ----------------------------------------------------
 
         history_df = get_recent_aqi_history(
             n_days=8
@@ -700,10 +644,7 @@ def forecast_aqi(
             .tolist()
         )
 
-
-        # ----------------------------------------------------
         # GET FUTURE ENVIRONMENTAL CONDITIONS
-        # ----------------------------------------------------
 
         forecast_df = get_forecast_inputs(
             days=days
@@ -716,10 +657,6 @@ def forecast_aqi(
                 detail="No forecast data available."
             )
 
-
-        # ----------------------------------------------------
-        # GENERATE FORECAST
-        # ----------------------------------------------------
 
         results = []
 
@@ -840,11 +777,6 @@ def forecast_aqi(
                         2
                     )
             })
-
-
-            # Recursive forecasting:
-            # today's prediction becomes
-            # tomorrow's historical AQI
 
             recent_aqi_values.append(
                 predicted_aqi

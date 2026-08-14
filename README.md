@@ -1,4 +1,4 @@
-# 🌍 AQI Prediction System
+#  AQI Prediction System
 
 An end-to-end **Air Quality Index (AQI) Prediction System** that uses machine learning, automated feature engineering, model training, explainable AI, and an interactive Streamlit dashboard to predict AQI and provide health-risk alerts.
 
@@ -6,7 +6,7 @@ The project is designed as an automated ML/MLOps pipeline using **GitHub Actions
 
 ---
 
-## 📌 Project Overview
+##  Project Overview
 
 Air pollution is a major environmental and public-health concern. The purpose of this project is to develop an intelligent system that can:
 
@@ -23,7 +23,7 @@ Air pollution is a major environmental and public-health concern. The purpose of
 
 ---
 
-## 🎯 Objectives
+##  Objectives
 
 The main objectives of the project are:
 
@@ -40,7 +40,7 @@ The main objectives of the project are:
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ```text
                     AQI / Environmental Data

@@ -13,10 +13,6 @@ from sklearn.metrics import (
 import numpy as np
 
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 FEATURE_FILE = "karachi_aqi_final_features.csv"
 
 MODEL_DIR = "models"
@@ -26,20 +22,14 @@ MODEL_FILE = os.path.join(
     "karachi_aqi_model.pkl"
 )
 
-
-# ============================================================
-# 1. CREATE MODEL DIRECTORY
-# ============================================================
+#  CREATE MODEL DIRECTORY
 
 os.makedirs(
     MODEL_DIR,
     exist_ok=True
 )
 
-
-# ============================================================
-# 2. LOAD FEATURE DATA
-# ============================================================
+# LOAD FEATURE DATA
 
 print("Loading feature data...")
 
@@ -49,26 +39,17 @@ df = pd.read_csv(
 
 print(f"Loaded {len(df)} rows")
 
-
-# ============================================================
-# 3. CONVERT DATE
-# ============================================================
+#  CONVERT DATE
 
 df["date"] = pd.to_datetime(
     df["date"]
 )
 
-
-# ============================================================
-# 4. REMOVE MISSING VALUES
-# ============================================================
+#  REMOVE MISSING VALUES
 
 df = df.dropna().reset_index(drop=True)
 
-
-# ============================================================
-# 5. SELECT FEATURES
-# ============================================================
+#  SELECT FEATURES
 
 FEATURES = [
     "pm10",
@@ -96,10 +77,6 @@ FEATURES = [
 ]
 
 
-# ============================================================
-# 6. CREATE X AND y
-# ============================================================
-
 X = df[FEATURES]
 
 y = df["target_aqi"]
@@ -112,10 +89,6 @@ print("\nTarget shape:")
 print(y.shape)
 
 
-# ============================================================
-# 7. TRAIN / TEST SPLIT
-# ============================================================
-
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -123,10 +96,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-
-# ============================================================
-# 8. TRAIN RANDOM FOREST
-# ============================================================
 
 print("\nTraining Random Forest...")
 
@@ -141,18 +110,10 @@ rf_model.fit(
 )
 
 
-# ============================================================
-# 9. PREDICTION
-# ============================================================
-
 predictions = rf_model.predict(
     X_test
 )
 
-
-# ============================================================
-# 10. EVALUATION
-# ============================================================
 
 rmse = np.sqrt(
     mean_squared_error(
@@ -172,18 +133,14 @@ r2 = r2_score(
 )
 
 
-print("\n================================")
+print("\n")
 print("MODEL RESULTS")
-print("================================")
+print("")
 
 print(f"RMSE: {rmse:.4f}")
 print(f"MAE : {mae:.4f}")
 print(f"R²  : {r2:.4f}")
 
-
-# ============================================================
-# 11. SAVE MODEL
-# ============================================================
 
 joblib.dump(
     rf_model,
@@ -191,8 +148,8 @@ joblib.dump(
 )
 
 
-print("\n================================")
+print("\n")
 print("TRAINING COMPLETED")
-print("================================")
+print("")
 
 print(f"Model saved to: {MODEL_FILE}")
