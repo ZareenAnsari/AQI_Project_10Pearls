@@ -86,7 +86,7 @@ Data flows one direction at inference time: the Streamlit app never talks to Hop
 
 ## Data & Feature Engineering
 
-**Data source:** [Zenodo.org, Aqicn.org.]
+**Data source:** Zenodo.org, Aqicn.org
 
 **Features used:**
 
@@ -134,13 +134,11 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
 1. Clone the repo and install dependencies:
    ```bash
    git clone https://github.com/ZareenAnsari/AQI_Project_10Pearls
-   cd karachi-aqi
+   cd AQI_Project_10Pearls
    pip install -r requirements.txt
    ```
 
 2. Add your Hopsworks API key to a `.env` file (make sure this file is in `.gitignore` and never committed):
-   ```
-   HOPSWORKS_API_KEY=your_key_here
    ```
 
 3. Start the backend:
