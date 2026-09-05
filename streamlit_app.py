@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import pandas as pd
 import textwrap
+import plotly.graph_objects as go
+import plotly.express as px
 
 
 def html(content):
@@ -16,6 +18,9 @@ st.set_page_config(
 
 # FastAPI and Streamlit.
 API_URL = "http://127.0.0.1:8000"
+
+# Local CSV used for the EDA tab (same directory as this file)
+DATA_PATH = "karachi_aqi_final_features.csv"
 
 
 st.markdown(
@@ -303,10 +308,37 @@ st.markdown(
 
     /* TABS */
 
+    
+    div[data-baseweb="tab-list"] {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        gap: 8px !important;
+
+    }
+
+
     button[data-baseweb="tab"] {
-        font-size: 0.95rem;
-        font-weight: 750;
-        padding: 0.8rem 1.2rem;
+        flex: 0 0 auto !important;
+        color: #0f766e;
+        white-space: nowrap !important;
+
+        font-size: 0.95rem !important;
+        font-weight: 750 !important;
+
+        padding: 0.8rem 1.2rem !important;
+
+        border-radius: 8px 8px 0 0 !important;
+    }
+
+    div[data-baseweb="tab-list"] > div {
+        overflow: visible !important;
+    }
+
+    button[data-baseweb="tab"] p {
+        white-space: nowrap !important;
     }
 
     /* BUTTONS */
@@ -511,6 +543,46 @@ def render_health_alert(predicted_aqi):
         unsafe_allow_html=True
     )
 
+
+def render_aqi_gauge(aqi_value):
+
+    color = get_aqi_color(aqi_value)
+
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=aqi_value,
+            number={"font": {"size": 42}},
+            gauge={
+                "axis": {"range": [0, 300], "tickwidth": 1},
+                "bar": {"color": color, "thickness": 0.3},
+                "bgcolor": "white",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 50], "color": "#dcfce7"},
+                    {"range": [50, 100], "color": "#fef9c3"},
+                    {"range": [100, 150], "color": "#ffedd5"},
+                    {"range": [150, 200], "color": "#fee2e2"},
+                    {"range": [200, 300], "color": "#f3e8ff"},
+                ],
+            }
+        )
+    )
+
+    fig.update_layout(
+        height=280,
+        margin=dict(l=20, r=20, t=30, b=10),
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+@st.cache_data
+def load_eda_data(path):
+    return pd.read_csv(path)
+
+
 # HERO HEADER
 
 st.markdown(
@@ -518,8 +590,7 @@ st.markdown(
     <div class="hero">
          <b class="hero-title">Karachi Air Quality Index</b><br>
         <span class="hero-subtitle">
-            AI-powered AQI prediction and 3-day air-quality forecasting
-            using Random Forest, Hopsworks and FastAPI.
+            AI-powered environmental prediction for Karachi.
         </span><br>
         <span class="hero-badge">
             ● AI Prediction System &nbsp; • &nbsp; Karachi
@@ -579,11 +650,12 @@ with st.sidebar:
 
     st.markdown("###  System Features")
 
+    st.caption(" Current AQI & Pollutants")
     st.caption(" Automatic 3-Day Forecast")
     st.caption(" Manual What-If Simulation")
+    st.caption(" SHAP Model Explainability")
     st.caption(" AQI Health Alerts")
-    st.caption(" AQI Trend Visualization")
-    st.caption(" Prediction Details")
+    st.caption(" EDA & Feature Trends")
 
     st.divider()
 
@@ -603,6 +675,10 @@ with st.sidebar:
             if health_data.get("model_loaded"):
 
                 st.success(" API Online")
+
+                if not health_data.get("explainer_loaded"):
+
+                    st.caption(" SHAP explainer not loaded")
 
             else:
 
@@ -672,7 +748,7 @@ with info4:
         """
         <div class="info-card">
             <div class="info-label">Data Pipeline</div>
-            <div class="info-value">☁️ Hopsworks</div>
+            <div class="info-value"> Hopsworks</div>
             <div class="info-description">Feature store</div>
         </div>
         """,
@@ -684,12 +760,173 @@ st.write("")
 
 # TABS
 
-tab_forecast, tab_whatif = st.tabs(
+tab_current, tab_forecast, tab_whatif, tab_eda = st.tabs(
     [
+        "  Current AQI",
         "  3-Day Forecast",
-        "  What-If Simulator"
+        "  What-If Simulator + SHAP",
+        "  EDA Insights"
     ]
 )
+
+# TAB 0 — CURRENT (REAL-TIME) AQI
+
+with tab_current:
+
+    st.markdown(
+        '<div class="section-title">'
+        ' Current Air Quality'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<div class="section-description">'
+        'Live pollutant readings from Open-Meteo combined with the '
+        'model\'s current predicted AQI for Karachi.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    refresh_current = st.button(
+        " Refresh Current AQI",
+        key="refresh_current"
+    )
+
+    if "current_data" not in st.session_state:
+        st.session_state["current_data"] = None
+
+    if refresh_current or st.session_state["current_data"] is None:
+
+        with st.spinner("Fetching current air quality..."):
+
+            try:
+
+                current_response = requests.get(
+                    f"{API_URL}/current",
+                    timeout=30
+                )
+
+                if current_response.status_code == 200:
+
+                    st.session_state["current_data"] = (
+                        current_response.json()
+                    )
+
+                else:
+
+                    st.session_state["current_data"] = None
+
+                    st.error(
+                        "FastAPI returned status code "
+                        f"{current_response.status_code}"
+                    )
+
+                    try:
+                        st.json(current_response.json())
+                    except Exception:
+                        st.write(current_response.text)
+
+            except requests.exceptions.ConnectionError:
+
+                st.session_state["current_data"] = None
+
+                st.error(" Could not connect to FastAPI.")
+
+                st.info(
+                    "Make sure Uvicorn is running on port 8000 "
+                    "inside the Codespace."
+                )
+
+            except requests.exceptions.Timeout:
+
+                st.session_state["current_data"] = None
+                st.error(" The current-AQI request timed out.")
+
+            except Exception as e:
+
+                st.session_state["current_data"] = None
+                st.error(f" Unexpected error: {str(e)}")
+
+    current_data = st.session_state["current_data"]
+
+    if current_data:
+
+        predicted_aqi = float(current_data["predicted_aqi"])
+        pollutants = current_data.get("pollutants", {})
+        category = get_aqi_category(predicted_aqi)
+
+        gauge_col, pollutant_col = st.columns([1, 2])
+
+        with gauge_col:
+
+            st.markdown(
+                f'<div style="text-align:center; font-weight:800; '
+                f'color:#0f172a; margin-bottom:0.3rem;">'
+                f' {category}</div>',
+                unsafe_allow_html=True
+            )
+
+            render_aqi_gauge(predicted_aqi)
+
+        with pollutant_col:
+
+            st.markdown(
+                '<div class="form-section-title">'
+                ' Current Pollutants'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            row1 = st.columns(3)
+            row2 = st.columns(3)
+
+            pollutant_items = [
+                ("PM2.5", pollutants.get("pm25"), "µg/m³"),
+                ("PM10", pollutants.get("pm10"), "µg/m³"),
+                ("Ozone (O3)", pollutants.get("o3"), "µg/m³"),
+                ("NO2", pollutants.get("no2"), "µg/m³"),
+                ("CO", pollutants.get("co"), "µg/m³"),
+                ("SO2", pollutants.get("so2"), "µg/m³"),
+            ]
+
+            for col, (label, value, unit) in zip(
+                row1 + row2,
+                pollutant_items
+            ):
+
+                with col:
+
+                    display_value = (
+                        f"{value:.1f}"
+                        if isinstance(value, (int, float))
+                        else "N/A"
+                    )
+
+                    st.markdown(
+                        html(f"""
+                        <div class="info-card">
+                            <div class="info-label">{label}</div>
+                            <div class="info-value">{display_value}</div>
+                            <div class="info-description">{unit}</div>
+                        </div>
+                        """),
+                        unsafe_allow_html=True
+                    )
+
+        st.write("")
+
+        render_health_alert(predicted_aqi)
+
+        if current_data.get("timestamp"):
+
+            st.caption(
+                f"Last updated: {current_data['timestamp']}"
+            )
+
+    else:
+
+        st.info("Click 'Refresh Current AQI' to load live data.")
 
 # TAB 1 — AUTOMATIC FORECAST
 
@@ -771,7 +1008,7 @@ with tab_forecast:
 
                         st.markdown(
                             '<div class="section-title">'
-                            ' Forecast Overview'
+                            ''
                             '</div>',
                             unsafe_allow_html=True
                         )
@@ -934,7 +1171,7 @@ with tab_forecast:
 
                         st.markdown(
                             '<div class="section-title">'
-                            ' Nearest Forecast'
+                            ''
                             '</div>',
                             unsafe_allow_html=True
                         )
@@ -1455,6 +1692,123 @@ with tab_whatif:
 
                     st.write("")
 
+                    # SHAP EXPLAINABILITY
+
+                    st.markdown(
+                        '<div class="section-title">'
+                        ' Model Explainability (SHAP)'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    st.markdown(
+                        '<div class="section-description">'
+                        'How each feature pushed this prediction above '
+                        'or below the model\'s average output.'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    try:
+
+                        shap_response = requests.post(
+                            f"{API_URL}/shap",
+                            json=payload,
+                            timeout=60
+                        )
+
+                        if shap_response.status_code == 200:
+
+                            shap_result = shap_response.json()
+
+                            contributions = shap_result.get(
+                                "contributions",
+                                []
+                            )
+
+                            if contributions:
+
+                                shap_df = pd.DataFrame(
+                                    contributions
+                                ).head(10)
+
+                                shap_df = shap_df.sort_values(
+                                    "shap_value"
+                                )
+
+                                shap_fig = px.bar(
+                                    shap_df,
+                                    x="shap_value",
+                                    y="feature",
+                                    orientation="h",
+                                    color="shap_value",
+                                    color_continuous_scale=[
+                                        "#ef4444",
+                                        "#e2e8f0",
+                                        "#22c55e"
+                                    ],
+                                    labels={
+                                        "shap_value":
+                                            "Impact on Predicted AQI",
+                                        "feature":
+                                            "Feature"
+                                    }
+                                )
+
+                                shap_fig.update_layout(
+                                    height=380,
+                                    coloraxis_showscale=False,
+                                    margin=dict(
+                                        l=10, r=10, t=20, b=10
+                                    )
+                                )
+
+                                st.plotly_chart(
+                                    shap_fig,
+                                    use_container_width=True
+                                )
+
+                                st.caption(
+                                    "Green bars pushed the prediction "
+                                    "higher; red bars pulled it lower "
+                                    "(top 10 features shown)."
+                                )
+
+                            else:
+
+                                st.info(
+                                    "No SHAP contributions returned."
+                                )
+
+                        elif shap_response.status_code == 503:
+
+                            st.info(
+                                "SHAP explainer is not available "
+                                "for this model on the server."
+                            )
+
+                        else:
+
+                            st.warning(
+                                "Could not compute SHAP explanation "
+                                f"(status {shap_response.status_code})."
+                            )
+
+                    except requests.exceptions.ConnectionError:
+
+                        st.warning(
+                            "Could not connect to FastAPI for the "
+                            "SHAP explanation."
+                        )
+
+                    except Exception as e:
+
+                        st.warning(
+                            f"SHAP explanation error: {str(e)}"
+                        )
+
+                    st.write("")
+
 
                 else:
 
@@ -1502,6 +1856,208 @@ with tab_whatif:
                 st.error(
                     f" Unexpected error: {str(e)}"
                 )
+
+# TAB 3 — EDA INSIGHTS
+
+with tab_eda:
+
+    st.markdown(
+        '<div class="section-title">'
+        ' Exploratory Data Analysis & Feature Trends'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<div class="section-description">'
+        'Temporal distributions, pollutant correlations, and historical '
+        'patterns underlying the Karachi AQI forecasting model.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    eda_df = None
+
+    try:
+
+        eda_df = load_eda_data(DATA_PATH)
+
+    except FileNotFoundError:
+
+        st.error(
+            f"Could not find '{DATA_PATH}'. Make sure this CSV sits "
+            "in the same directory as streamlit_app.py (or update "
+            "DATA_PATH)."
+        )
+
+    except Exception as e:
+
+        st.error(f"Could not load EDA data: {str(e)}")
+
+    if eda_df is not None:
+
+        date_col = None
+
+        for candidate in ["date", "datetime", "timestamp"]:
+
+            if candidate in eda_df.columns:
+
+                date_col = candidate
+                break
+
+        e1, e2 = st.columns(2)
+
+        with e1:
+
+            st.markdown(
+                '<div class="form-section-title">'
+                ' Historical AQI Trend'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            if date_col and "aqi" in eda_df.columns:
+
+                trend_df = eda_df[[date_col, "aqi"]].copy()
+
+                trend_df[date_col] = pd.to_datetime(
+                    trend_df[date_col],
+                    errors="coerce"
+                )
+
+                trend_df = (
+                    trend_df
+                    .dropna(subset=[date_col])
+                    .sort_values(date_col)
+                    .set_index(date_col)
+                )
+
+                st.line_chart(
+                    trend_df,
+                    y="aqi",
+                    height=280
+                )
+
+            else:
+
+                st.info(
+                    "No date/aqi columns found for the trend chart."
+                )
+
+        with e2:
+
+            st.markdown(
+                '<div class="form-section-title">'
+                ' AQI by Hour of Day'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            if "hour" in eda_df.columns and "aqi" in eda_df.columns:
+
+                hourly_avg = (
+                    eda_df.groupby("hour")["aqi"]
+                    .mean()
+                    .sort_index()
+                )
+
+                st.line_chart(hourly_avg, height=280)
+
+            else:
+
+                st.info("No hour/aqi columns found.")
+
+        e3, e4 = st.columns(2)
+
+        with e3:
+
+            st.markdown(
+                '<div class="form-section-title">'
+                ' AQI by Day of Week'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            if "weekday" in eda_df.columns and "aqi" in eda_df.columns:
+
+                weekday_names = [
+                    "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+                ]
+
+                weekday_avg = (
+                    eda_df.groupby("weekday")["aqi"]
+                    .mean()
+                    .sort_index()
+                )
+
+                weekday_avg.index = [
+                    weekday_names[int(i)]
+                    if 0 <= int(i) < 7
+                    else str(i)
+                    for i in weekday_avg.index
+                ]
+
+                st.bar_chart(weekday_avg, height=280)
+
+            else:
+
+                st.info("No weekday/aqi columns found.")
+
+        with e4:
+
+            st.markdown(
+                '<div class="form-section-title">'
+                ' AQI Distribution'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            if "aqi" in eda_df.columns:
+
+                dist_fig = px.histogram(
+                    eda_df,
+                    x="aqi",
+                    nbins=40
+                )
+
+                dist_fig.update_layout(
+                    height=280,
+                    margin=dict(l=10, r=10, t=20, b=10),
+                    bargap=0.05
+                )
+
+                st.plotly_chart(
+                    dist_fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.info("No aqi column found.")
+
+        st.write("")
+
+        st.markdown(
+            '<div class="section-title">'
+            ' Summary Statistics'
+            '</div>',
+            unsafe_allow_html=True
+        )
+
+        numeric_cols = eda_df.select_dtypes(
+            include="number"
+        ).columns.tolist()
+
+        if numeric_cols:
+
+            st.dataframe(
+                eda_df[numeric_cols].describe().T,
+                use_container_width=True
+            )
+
+        else:
+
+            st.info("No numeric columns found for summary statistics.")
 
 # FOOTER
 st.divider()

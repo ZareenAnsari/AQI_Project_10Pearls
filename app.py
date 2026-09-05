@@ -3,6 +3,7 @@ import glob
 import pickle
 import joblib
 import requests
+import numpy as np
 import pandas as pd
 
 from dotenv import load_dotenv
@@ -10,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 import hopsworks
+import shap
 
 # 1. LOAD ENVIRONMENT VARIABLES
 
@@ -99,6 +101,7 @@ FEATURE_ORDER = [
 # 5. GLOBAL STATE
 
 model = None
+explainer = None
 
 MODEL_NAME = "aqi_random_forest"
 MODEL_VERSION = 1
@@ -111,6 +114,7 @@ feature_store = None
 def load_model_from_hopsworks():
 
     global model
+    global explainer
     global hopsworks_project
     global feature_store
 
@@ -197,6 +201,20 @@ def load_model_from_hopsworks():
         f"Model type: {type(model)}"
     )
 
+    # BUILD SHAP EXPLAINER
+
+    try:
+
+        explainer = shap.TreeExplainer(model)
+
+        print("SHAP TreeExplainer created successfully.")
+
+    except Exception as e:
+
+        print("Could not create SHAP explainer:", str(e))
+
+        explainer = None
+
     return model
 
 
@@ -212,6 +230,7 @@ except Exception as e:
     print("=" * 60)
 
     model = None
+    explainer = None
 
 
 def get_recent_aqi_history(
@@ -445,6 +464,100 @@ def get_forecast_inputs(
 
     return forecast_df
 
+
+# GET CURRENT (REAL-TIME) CONDITIONS
+
+def get_current_conditions() -> dict:
+
+    air_quality_url = (
+        "https://air-quality-api.open-meteo.com/v1/air-quality?"
+        f"latitude={CITY_LAT}"
+        f"&longitude={CITY_LON}"
+        "&current="
+        "pm10,"
+        "pm2_5,"
+        "carbon_monoxide,"
+        "nitrogen_dioxide,"
+        "sulphur_dioxide,"
+        "ozone,"
+        "aerosol_optical_depth,"
+        "dust,"
+        "uv_index,"
+        "us_aqi,"
+        "european_aqi"
+        "&timezone=Asia/Karachi"
+    )
+
+    air_response = requests.get(
+        air_quality_url,
+        timeout=30
+    )
+
+    air_response.raise_for_status()
+
+    air_json = air_response.json()
+
+    if "current" not in air_json:
+
+        raise RuntimeError(
+            "Invalid response from Open-Meteo air-quality API."
+        )
+
+    weather_url = (
+        "https://api.open-meteo.com/v1/forecast?"
+        f"latitude={CITY_LAT}"
+        f"&longitude={CITY_LON}"
+        "&current="
+        "temperature_2m,"
+        "relative_humidity_2m,"
+        "wind_speed_10m,"
+        "precipitation"
+        "&timezone=Asia/Karachi"
+    )
+
+    weather_response = requests.get(
+        weather_url,
+        timeout=30
+    )
+
+    weather_response.raise_for_status()
+
+    weather_json = weather_response.json()
+
+    if "current" not in weather_json:
+
+        raise RuntimeError(
+            "Invalid response from Open-Meteo weather API."
+        )
+
+    current_air = air_json["current"]
+    current_weather = weather_json["current"]
+
+    now = pd.Timestamp(current_air.get("time"))
+
+    return {
+        "time": current_air.get("time"),
+        "pm10": current_air.get("pm10"),
+        "pm25": current_air.get("pm2_5"),
+        "co": current_air.get("carbon_monoxide"),
+        "no2": current_air.get("nitrogen_dioxide"),
+        "so2": current_air.get("sulphur_dioxide"),
+        "o3": current_air.get("ozone"),
+        "aerosol_optical_depth": current_air.get("aerosol_optical_depth"),
+        "dust": current_air.get("dust"),
+        "uv_index": current_air.get("uv_index"),
+        "reported_us_aqi": current_air.get("us_aqi"),
+        "european_aqi": current_air.get("european_aqi"),
+        "temperature": current_weather.get("temperature_2m"),
+        "humidity": current_weather.get("relative_humidity_2m"),
+        "wind_speed": current_weather.get("wind_speed_10m"),
+        "rain": current_weather.get("precipitation"),
+        "hour": now.hour if not pd.isna(now) else 12,
+        "day": now.day if not pd.isna(now) else 1,
+        "month": now.month if not pd.isna(now) else 1,
+        "weekday": now.weekday() if not pd.isna(now) else 0,
+    }
+
 # 9. RUN MODEL PREDICTION
 
 def predict_row(
@@ -503,6 +616,47 @@ def predict_row(
         prediction[0]
     )
 
+
+def build_feature_dict_from_current(
+    current: dict,
+    lag_1: float,
+    lag_7: float,
+    change_rate: float
+) -> dict:
+
+    return {
+
+        "pm10": current["pm10"],
+        "pm25": current["pm25"],
+        "co": current["co"],
+        "no2": current["no2"],
+        "so2": current["so2"],
+        "o3": current["o3"],
+
+        "aerosol_optical_depth":
+            current["aerosol_optical_depth"],
+
+        "dust": current["dust"],
+        "uv_index": current["uv_index"],
+
+        "aqi": lag_1,
+        "european_aqi": current["european_aqi"],
+
+        "hour": int(current["hour"]),
+        "day": int(current["day"]),
+        "month": int(current["month"]),
+        "weekday": int(current["weekday"]),
+
+        "aqi_change_rate": change_rate,
+        "aqi_lag_1": lag_1,
+        "aqi_lag_7": lag_7,
+
+        "temperature": current["temperature"],
+        "humidity": current["humidity"],
+        "wind_speed": current["wind_speed"],
+        "rain": current["rain"]
+    }
+
 #  HOME
 
 @app.get("/")
@@ -520,7 +674,10 @@ def home():
             MODEL_VERSION,
 
         "model_loaded":
-            model is not None
+            model is not None,
+
+        "explainer_loaded":
+            explainer is not None
     }
 
 #  HEALTH CHECK
@@ -532,7 +689,8 @@ def health():
 
         return {
             "status": "unhealthy",
-            "model_loaded": False
+            "model_loaded": False,
+            "explainer_loaded": explainer is not None
         }
 
     return {
@@ -540,6 +698,9 @@ def health():
         "status": "healthy",
 
         "model_loaded": True,
+
+        "explainer_loaded":
+            explainer is not None,
 
         "model":
             MODEL_NAME,
@@ -601,6 +762,221 @@ def predict_aqi(
             status_code=500,
             detail=str(e)
         )
+
+
+#  SHAP EXPLAINABILITY
+
+@app.post("/shap")
+def shap_explain(
+    input_data: AQIInput
+):
+
+    if model is None:
+
+        raise HTTPException(
+            status_code=503,
+            detail="AQI model is not loaded from Hopsworks."
+        )
+
+    if explainer is None:
+
+        raise HTTPException(
+            status_code=503,
+            detail="SHAP explainer is not available for this model."
+        )
+
+    try:
+
+        try:
+            data = input_data.model_dump()
+
+        except AttributeError:
+            data = input_data.dict()
+
+        X = pd.DataFrame(
+            [
+                [
+                    data[feature]
+                    for feature in FEATURE_ORDER
+                ]
+            ],
+            columns=FEATURE_ORDER
+        )
+
+        X = X.apply(
+            pd.to_numeric,
+            errors="coerce"
+        )
+
+        if X.isnull().any().any():
+
+            raise HTTPException(
+                status_code=400,
+                detail="One or more input features are invalid."
+            )
+
+        shap_values = explainer.shap_values(X)
+
+        # RandomForestRegressor -> array shape (1, n_features)
+        values = np.array(shap_values).reshape(-1)
+
+        base_value = explainer.expected_value
+
+        if isinstance(base_value, (list, np.ndarray)):
+            base_value = base_value[0]
+
+        contributions = [
+            {
+                "feature": feature,
+                "shap_value": float(value),
+                "feature_value": float(X.iloc[0][feature])
+            }
+            for feature, value in zip(FEATURE_ORDER, values)
+        ]
+
+        contributions.sort(
+            key=lambda item: abs(item["shap_value"]),
+            reverse=True
+        )
+
+        return {
+
+            "base_value": float(base_value),
+
+            "predicted_aqi": round(
+                float(base_value) + float(values.sum()),
+                2
+            ),
+
+            "contributions": contributions
+        }
+
+    except HTTPException:
+
+        raise
+
+    except Exception as e:
+
+        print(
+            "SHAP error:",
+            str(e)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+#  CURRENT (REAL-TIME) AQI
+
+@app.get("/current")
+def current_aqi():
+
+    if model is None:
+
+        raise HTTPException(
+            status_code=503,
+            detail="AQI model is not loaded from Hopsworks."
+        )
+
+    try:
+
+        current = get_current_conditions()
+
+        history_df = get_recent_aqi_history(
+            n_days=8
+        )
+
+        if history_df.empty:
+
+            raise HTTPException(
+                status_code=503,
+                detail="No historical AQI data available."
+            )
+
+        recent_aqi_values = (
+            history_df["aqi"]
+            .astype(float)
+            .tolist()
+        )
+
+        lag_1 = recent_aqi_values[-1]
+
+        if len(recent_aqi_values) >= 7:
+            lag_7 = recent_aqi_values[-7]
+        else:
+            lag_7 = recent_aqi_values[0]
+
+        if len(recent_aqi_values) >= 2:
+            change_rate = recent_aqi_values[-1] - recent_aqi_values[-2]
+        else:
+            change_rate = 0.0
+
+        feature_dict = build_feature_dict_from_current(
+            current,
+            lag_1,
+            lag_7,
+            change_rate
+        )
+
+        predicted_aqi = predict_row(
+            feature_dict
+        )
+
+        return {
+
+            "model": MODEL_NAME,
+            "version": MODEL_VERSION,
+
+            "predicted_aqi": round(predicted_aqi, 2),
+            "reported_aqi": current.get("reported_us_aqi"),
+
+            "pollutants": {
+                "pm25": current.get("pm25"),
+                "pm10": current.get("pm10"),
+                "o3": current.get("o3"),
+                "no2": current.get("no2"),
+                "co": current.get("co"),
+                "so2": current.get("so2"),
+            },
+
+            "weather": {
+                "temperature": current.get("temperature"),
+                "humidity": current.get("humidity"),
+                "wind_speed": current.get("wind_speed"),
+                "rain": current.get("rain"),
+            },
+
+            "timestamp": current.get("time")
+        }
+
+    except HTTPException:
+
+        raise
+
+    except requests.exceptions.RequestException as e:
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Current data source error: "
+                f"{str(e)}"
+            )
+        )
+
+    except Exception as e:
+
+        print(
+            "Current AQI error:",
+            str(e)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
 
 # AUTOMATIC FORECAST
 
