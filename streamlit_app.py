@@ -21,7 +21,7 @@ import os
 
 API_URL = os.getenv(
     "API_URL",
-    "http://127.0.0.1:8000"
+    "https://aqi-project-10pearls.fastapicloud.dev"
 )
 
 # Local CSV used for the EDA tab (same directory as this file)
