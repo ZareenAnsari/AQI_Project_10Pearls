@@ -1013,7 +1013,7 @@ with tab_forecast:
 
                         st.markdown(
                             '<div class="section-title">'
-                            ''
+                            'Forecast Overview'
                             '</div>',
                             unsafe_allow_html=True
                         )
@@ -1176,7 +1176,7 @@ with tab_forecast:
 
                         st.markdown(
                             '<div class="section-title">'
-                            ''
+                            'Nearest Forecast'
                             '</div>',
                             unsafe_allow_html=True
                         )
