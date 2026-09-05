@@ -12,6 +12,7 @@ I built this to get hands-on with a full ML pipeline not just training a model i
 
 ## Table of Contents
 - [Deployed Link](#deployed)
+- [How It's Deployed](#how-its-deployed)
 - [Overview](#overview)
 - [Problem Statement & Objectives](#problem-statement--objectives)
 - [Features](#features)
@@ -31,31 +32,69 @@ I built this to get hands-on with a full ML pipeline not just training a model i
 ---
 ## Deployed
 
-https://aqiproject10pearls-4tpd5oncge6zimiesdgkda.streamlit.app/
+**Frontend (Streamlit UI):** https://aqiproject10pearls-4tpd5oncge6zimiesdgkda.streamlit.app/
+
+**Backend (FastAPI API):** https://aqi-project-10pearls.fastapicloud.dev
+
+## How It's Deployed
+
+The app is split into two independently deployed services, so the frontend and backend can be redeployed, scaled, or debugged separately.
+
+### Frontend — Streamlit Community Cloud
+
+- Hosted for free on [Streamlit Community Cloud](https://share.streamlit.io).
+- Connected directly to this GitHub repo — every push to `main` triggers an automatic redeploy.
+- Only needs `requirements.txt`; no environment secrets required on this side, since all Hopsworks credentials live on the backend.
+- The app's `API_URL` constant in `streamlit_app.py` points at the deployed FastAPI backend below rather than `localhost`.
+
+### Backend — FastAPI Cloud
+
+- Hosted on [FastAPI Cloud](https://fastapicloud.com), the official hosting platform from the FastAPI team, using their free Hobby tier.
+- Deployed via the FastAPI CLI rather than a Dockerfile:
+
+  ```bash
+  # one-time setup
+  pip install "fastapi[standard]"
+  fastapi cloud login
+  fastapi cloud apps create --link
+
+  # set secrets (Hopsworks credentials never touch the repo)
+  fastapi cloud env set --secret HOPSWORKS_API_KEY "your-api-key"
+  fastapi cloud env set --secret HOPSWORKS_PROJECT "your-project-name"
+
+  # deploy
+  fastapi deploy
+  ```
+- A `.python-version` file pins the Python version (`3.12`) so the build resolves pre-built wheels for `pandas`/`scikit-learn` instead of compiling them from source.
+- On startup, the backend logs into Hopsworks, downloads the registered Random Forest model, and builds a SHAP `TreeExplainer` for the explainability endpoint.
 
 ## Overview
 
-Air pollution is a persistent problem in Karachi, and reliable, easy-to-read AQI information isn't always available in a timely way. This project is a small end-to-end ML system that predicts the current and near-future Air Quality Index based on pollutant concentrations, weather variables, and time-based features. It supports both an automatic 3-day forecast and a manual "what-if" mode where you can test custom scenarios.
+Air pollution is a persistent problem in Karachi, and reliable, easy-to-read AQI information isn't always available in a timely way. This project is a small end-to-end ML system that predicts the current and near-future Air Quality Index based on pollutant concentrations, weather variables, and time-based features. It supports live current-conditions monitoring, an automatic 3-day forecast, a manual "what-if" mode with model explainability, and exploratory data analysis of the underlying training data.
 
 ## Problem Statement & Objectives
 
 There's a need for a lightweight, self-contained system that can 
-- (a) predict AQI from a given set of environmental readings, and 
-- (b) forecast AQI a few days ahead using recent trends without requiring the user to understand the model underneath.
+- (a) report current AQI from live environmental readings,
+- (b) predict AQI from a given set of environmental readings, and 
+- (c) forecast AQI a few days ahead using recent trends without requiring the user to understand the model underneath.
 
 Goals for this project:
 
 - Collect and engineer relevant pollutant, weather, and time-based features for AQI prediction.
 - Train and evaluate multiple models and best model was Random Forest Regressor.
 - Version and serve the trained model using a feature store / model registry (Hopsworks).
-- Expose the model through a REST API (FastAPI) with prediction and forecast endpoints.
-- Build an interactive frontend (Streamlit) for both automatic forecasting and manual scenario testing.
+- Expose the model through a REST API (FastAPI) with current, prediction, forecast, and explainability endpoints.
+- Build an interactive frontend (Streamlit) for live monitoring, automatic forecasting, manual scenario testing, and data exploration.
 - Evaluate accuracy and usability, and document limitations honestly rather than overselling the result.
 
 ## Features
 
-- **3-Day Forecast tab** : pulls the latest environmental data automatically and shows a 3-day AQI forecast with daily cards, a trend chart, and a health advisory.
-- **What-If Simulator tab** : lets you manually enter pollutant levels, weather conditions, and time features to see what the model predicts for a custom scenario.
+- **Current AQI tab**: live pollutant readings (PM2.5, PM10, Ozone, NO2, CO, SO2) pulled from Open-Meteo, combined with the model's real-time predicted AQI shown on a gauge.
+- **3-Day Forecast tab**: pulls the latest environmental data automatically and shows a 3-day AQI forecast with daily cards, a trend chart, and a health advisory.
+- **What-If Simulator tab**: lets you manually enter pollutant levels, weather conditions, and time features to see what the model predicts for a custom scenario.
+- **SHAP Model Explainability**: after every What-If prediction, a SHAP bar chart shows which features pushed the predicted AQI up (green) or down (red), and by how much.
+- **EDA Insights tab**: historical AQI trend, AQI by hour of day, AQI by day of week, an AQI distribution histogram, and summary statistics computed directly from the training dataset.
 - Health alerts that change based on the predicted AQI band (Good → Hazardous), using standard AQI category thresholds.
 
 ## Tech Stack
@@ -63,9 +102,13 @@ Goals for this project:
 | Layer | Tool |
 |---|---|
 | Model | Random Forest (scikit-learn) |
+| Explainability | SHAP (TreeExplainer) |
 | Feature Store & Model Registry | Hopsworks |
 | Backend API | FastAPI |
 | Frontend | Streamlit |
+| Charts / Visualization | Plotly |
+| Backend Hosting | FastAPI Cloud |
+| Frontend Hosting | Streamlit Community Cloud |
 | Data source |  Zenodo.org, Aqicn.org |
 
 ## System Architecture
@@ -79,13 +122,15 @@ Environmental data source
 Hopsworks Feature Store  ──►  Model training  ──►  Hopsworks Model Registry
                                                                   │
                                                                   ▼
-                                                        FastAPI (/predict, /forecast, /health)
+                                          FastAPI (/current, /predict, /forecast, /shap, /health)
+                                          hosted on FastAPI Cloud
                                                                   │
                                                                   ▼
-                                                        Streamlit UI (this repo)
+                                          Streamlit UI (this repo)
+                                          hosted on Streamlit Community Cloud
 ```
 
-Data flows one direction at inference time: the Streamlit app never talks to Hopsworks directly. Every read and prediction goes through the FastAPI layer, which keeps the frontend simple and keeps credentials off the client.
+Data flows one direction at inference time: the Streamlit app never talks to Hopsworks directly. Every read and prediction goes through the FastAPI layer, which keeps the frontend simple and keeps credentials off the client. In production, Streamlit Community Cloud and FastAPI Cloud each host their own piece independently, communicating only over HTTPS.
 
 ## Data & Feature Engineering
 
@@ -116,15 +161,19 @@ Random Forest regression was chosen because it handles non-linear relationships 
 
 **Training pipeline:** Features are engineered and written to the Hopsworks Feature Store. The Random Forest model is trained on this feature set and, once evaluated, registered to the Hopsworks Model Registry along with its version number, so the serving layer always pulls a known, reproducible model rather than whatever's sitting in a local file.
 
+**Explainability:** On startup, the backend also builds a SHAP `TreeExplainer` around the loaded Random Forest model, so every What-If prediction can be paired with a per-feature contribution breakdown without retraining or refitting anything.
+
 **Hyperparameters:** max_depth=20, n_estimators=300, random_state=42, gridsearchcv=5.
 
 ## Project Structure
 
 ```
 .
-├── streamlit_app.py        # frontend
-├── app.py/                     # FastAPI backend (endpoints, model loading)
+├── streamlit_app.py          # frontend (Current AQI, Forecast, What-If + SHAP, EDA tabs)
+├── app.py                    # FastAPI backend (endpoints, model loading, SHAP explainer)
 ├── pipelines/                # feature engineering / training pipeline
+├── karachi_aqi_final_features.csv  # training dataset, used by the EDA tab
+├── .python-version           # pins Python version for FastAPI Cloud builds
 ├── requirements.txt
 └── README.md
 ```
@@ -141,22 +190,33 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
    pip install -r requirements.txt
    ```
 
-2. Start the backend:
+2. Add a `.env` file with your Hopsworks credentials (never committed to the repo):
+   ```
+   HOPSWORKS_API_KEY=your-api-key
+   HOPSWORKS_PROJECT=your-project-name
+   ```
+
+3. Start the backend:
    ```bash
    uvicorn app:app --host 0.0.0.0 --port 8000
    ```
 
-3. In a separate terminal, start the frontend:
+4. In a separate terminal, start the frontend:
    ```bash
    streamlit run streamlit_app.py
+   ```
+
+For deploying to production instead of running locally, see [How It's Deployed](#how-its-deployed) above.
 
 ## API Reference
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/health` | GET | Reports API status and whether the model loaded successfully |
+| `/health` | GET | Reports API status and whether the model and SHAP explainer loaded successfully |
+| `/current` | GET | Returns live pollutant readings and the model's real-time predicted AQI |
 | `/forecast?days=3` | GET | Returns a multi-day AQI forecast |
 | `/predict` | POST | Accepts a JSON payload of features and returns a single AQI prediction |
+| `/shap` | POST | Accepts the same payload as `/predict` and returns per-feature SHAP contributions for that prediction |
 
 Example `/predict` payload:
 ```json
@@ -197,15 +257,15 @@ Example `/predict` payload:
 
 ## Screenshots
 
-### Current
+### Current AQI
 
-<img src="screenshots/docs/current aqi.jpeg" alt="Current tab">
+<img src="screenshots/docs/current aqi.jpeg" alt="Current AQI tab">
 
-### What-If Simulator + Shap
+### What-If Simulator + SHAP
 
 <img src="screenshots/docs/shap.jpeg" alt="What-If simulator + Shap">
 
-### EDA
+### EDA Insights
 
 <img src="screenshots/docs/eda.jpeg" alt="Eda">
 
@@ -214,6 +274,7 @@ Example `/predict` payload:
 - The forecast depends on how fresh the feature store data is if the upstream data source lags, forecasts can be stale.
 - Currently trained/tuned for Karachi specifically; feature ranges (e.g. dust, aerosol optical depth).
 - No authentication on the FastAPI endpoints fine for a local/demo setup, not production-ready as-is.
+- The FastAPI Cloud free tier (0.1 vCPU / 512 MB shared) can be tight given Hopsworks, pandas, scikit-learn, and SHAP all loaded together — cold starts or occasional slow responses are possible on the free tier.
 
 ## Implemented
 
@@ -255,17 +316,20 @@ Zareen Ansari — zareenansari918@gmail.com / (https://www.linkedin.com/in/zaree
                               ▼
                     ┌───────────────────┐
                     │   Best ML Model   │
+                    │ (FastAPI Cloud)   │
                     └─────────┬─────────┘
                               │
-                ┌─────────────┼─────────────┐
-                │             │             │
-                ▼             ▼             ▼
-             AQI          SHAP          Health
-          Prediction   Explanation       Alert
-                │             │             │
-                └─────────────┼─────────────┘
+        ┌──────────┬─────────┼─────────┬──────────┐
+        │          │         │         │          │
+        ▼          ▼         ▼         ▼          ▼
+     Current      AQI       SHAP      Health      EDA
+      AQI      Prediction Explanation  Alert     Insights
+        │          │         │         │          │
+        └──────────┴─────────┼─────────┴──────────┘
                               │
                               ▼
                     ┌───────────────────┐
                     │ Streamlit Dashboard│
+                    │ (Streamlit Cloud) │
                     └───────────────────┘
+```
