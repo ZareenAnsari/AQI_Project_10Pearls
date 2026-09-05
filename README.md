@@ -59,8 +59,8 @@ The app is split into two independently deployed services, so the frontend and b
   fastapi cloud apps create --link
 
   # set secrets (Hopsworks credentials never touch the repo)
-  fastapi cloud env set --secret HOPSWORKS_API_KEY "your-api-key"
-  fastapi cloud env set --secret HOPSWORKS_PROJECT "your-project-name"
+  fastapi cloud env set --secret HOPSWORKS_API_KEY
+  fastapi cloud env set --secret HOPSWORKS_PROJECT "aqimlproject"
 
   # deploy
   fastapi deploy
@@ -190,10 +190,10 @@ This assumes FastAPI and Streamlit run side by side — e.g. in a GitHub Codespa
    pip install -r requirements.txt
    ```
 
-2. Add a `.env` file with your Hopsworks credentials (never committed to the repo):
+2. Add a `.env` file with your Hopsworks credentials:
    ```
-   HOPSWORKS_API_KEY=your-api-key
-   HOPSWORKS_PROJECT=your-project-name
+   HOPSWORKS_API_KEY=key
+   HOPSWORKS_PROJECT=aqimlproject
    ```
 
 3. Start the backend:
