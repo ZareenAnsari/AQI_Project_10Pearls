@@ -194,13 +194,17 @@ Example `/predict` payload:
 
 ## Screenshots
 
-### Forecast
+### Current
 
-<img src="screenshots/docs/forecast.png" alt="Forecast tab">
+<img src="screenshots/docs/current aqi.jpeg" alt="Current tab">
 
-### What-If Simulator
+### What-If Simulator + Shap
 
-<img src="screenshots/docs/whatif.png" alt="What-If simulator">
+<img src="screenshots/docs/shap.jpeg" alt="What-If simulator + Shap">
+
+### EDA
+
+<img src="screenshots/docs/eda.jpeg" alt="Eda">
 
 ## Limitations
 
