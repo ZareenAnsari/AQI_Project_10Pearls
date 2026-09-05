@@ -11,7 +11,7 @@ I built this to get hands-on with a full ML pipeline not just training a model i
 ---
 
 ## Table of Contents
-
+- [Deployed Link](#deployed)
 - [Overview](#overview)
 - [Problem Statement & Objectives](#problem-statement--objectives)
 - [Features](#features)
@@ -29,6 +29,9 @@ I built this to get hands-on with a full ML pipeline not just training a model i
 - [Author](#author)
 
 ---
+## Deployed
+
+https://aqiproject10pearls-4tpd5oncge6zimiesdgkda.streamlit.app/
 
 ## Overview
 
