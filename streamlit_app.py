@@ -17,7 +17,12 @@ st.set_page_config(
 )
 
 # FastAPI and Streamlit.
-API_URL = "http://127.0.0.1:8000"
+import os
+
+API_URL = os.getenv(
+    "API_URL",
+    "http://127.0.0.1:8000"
+)
 
 # Local CSV used for the EDA tab (same directory as this file)
 DATA_PATH = "karachi_aqi_final_features.csv"
