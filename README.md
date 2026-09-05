@@ -261,6 +261,11 @@ Example `/predict` payload:
 
 <img src="screenshots/docs/current aqi.jpeg" alt="Current AQI tab">
 
+
+### 3-Day Forecast
+
+<img src="screenshots/docs/3-day forecast.jpeg" alt="Eda">
+
 ### What-If Simulator + SHAP
 
 <img src="screenshots/docs/shap.jpeg" alt="What-If simulator + Shap">
