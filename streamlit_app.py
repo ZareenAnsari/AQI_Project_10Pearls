@@ -413,6 +413,16 @@ st.markdown(
         .forecast-card {
             margin-bottom: 0.7rem;
         }
+
+
+        div[data-baseweb="tab-list"] {
+            gap: 2px !important;
+        }
+
+        button[data-baseweb="tab"] {
+            font-size: 0.72rem !important;
+            padding: 0.5rem 0.5rem !important;
+        }
     }
 
     [data-testid="stMetricValue"],
@@ -774,10 +784,10 @@ st.write("")
 
 tab_current, tab_forecast, tab_whatif, tab_eda = st.tabs(
     [
-        "  Current AQI",
-        "  3-Day Forecast",
-        "  What-If Simulator + SHAP",
-        "  EDA Insights"
+        "Current AQI",
+        "3-Day Forecast",
+        "What-If Simulator + SHAP",
+        "EDA Insights"
     ]
 )
 
