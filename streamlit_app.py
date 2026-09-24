@@ -318,7 +318,8 @@ st.markdown(
         display: flex !important;
         flex-wrap: nowrap !important;
         width: 100% !important;
-        overflow-x: visible !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
         overflow-y: visible !important;
         gap: 8px !important;
 
@@ -339,7 +340,7 @@ st.markdown(
     }
 
     div[data-baseweb="tab-list"] > div {
-        overflow: visible !important;
+        overflow-x: auto !important;
     }
 
     button[data-baseweb="tab"] p {
@@ -412,6 +413,12 @@ st.markdown(
         .forecast-card {
             margin-bottom: 0.7rem;
         }
+    }
+
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricDelta"] {
+    color: #0f172a !important;
     }
 
     </style>
